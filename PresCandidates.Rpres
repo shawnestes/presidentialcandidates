@@ -1,0 +1,146 @@
+<style>
+
+.reveal { 
+  font-size: 30px;
+}
+
+.reveal h1, .reveal h2, .reveal h3 {
+  word-wrap: normal;
+  -moz-hyphens: none;
+}
+.small-code pre code {
+  font-size: 18px;
+}
+
+.reveal ul, 
+.reveal ol {
+    font-size: 30px;
+    list-style-type: square;
+}
+.footer {
+    color: black;
+    background: #FFFFFF;
+    position: fixed;
+    top: 90%;
+    text-align:right;
+    width:100%;
+}
+.exclaim .reveal .state-background {
+  background: black;
+} 
+
+.reveal h3 { 
+  font-size: 55px;
+  color: blue;
+  font-weight: bold;
+  text-align: center;
+}
+
+.reveal h2 { 
+  font-size: 45px;
+  color: blue
+}
+
+.exclaim .reveal h1,
+.exclaim .reveal h2,
+.exclaim .reveal p {
+  color: white;
+}
+</style>
+
+
+========================================================
+<span style="font-size: 1em;">With friends like that, who needs enemies?</span>
+<br>
+<div style="text-align: center">
+<img src="https://upload.wikimedia.org/wikipedia/commons/5/50/American_flag_2011.jpg" height="300" align="center">
+<br>
+Analysis on contributor data to each presidential campaign committee.
+
+<div class="footer" style="font-size: 0.5em;">
+Shawn Estes // Coursera Course Project - Developing Data Products&nbsp;&nbsp;
+</div>
+</div>
+
+Overview
+========================================================
+
+
+## Goals: 
+- Give users a fresh perspective on candidates based on their contributors
+- Find loopholes in reporting guidelines and FEC data availability
+- Challenge users to test their own biases against certain candidates
+
+## How we do that: 
+
+- Start with the latest FEC data available
+- Clean it and make CEO also equal Chief Executive Officer
+- Provide the user with an easy to use search function on raw data
+
+The Dataset
+========================================================
+class: small-code
+
+```{r, echo = FALSE}
+library(ggplot2)
+library(scales)
+get_dataset <- function() { 
+  datasetFile <- "./data/P00000001-ALL.csv"
+  if(!file.exists("./data/P00000001-ALL.csv")) {
+    datasetUrl <- "ftp://ftp.fec.gov/FEC/Presidential_Map/2016/P00000001/P00000001-ALL.zip"
+    destFile <- "./data/P00000001-ALL.zip"
+    # Download the file
+    download.file(datasetUrl, destfile=destFile, method="curl")
+    unzip(destFile, exdir = "./data/")
+  }
+  return(datasetFile)
+}
+
+load_dataset <- function(datasetFile) { 
+  fullDataSet <- read.csv(datasetFile, na.strings=c("NA","","INFORMATION REQUESTED PER BEST EFFORTS"), skip=1, head=FALSE,sep = ",", quote = "\"")
+  dataSetVariables <- paste("V", c(3,5,6,7,8,9,10,11), sep="")
+  dataset <- fullDataSet[dataSetVariables]
+  # Remove the full dataset, it's big and we don't need it
+  #rm(fullDataSet)
+  colnames(dataset) <- c('candidate_name','contributor_city','contributor_state','contributor_zip','contributor_employer','contributor_occupation','contributor_money','contributor_money_date')  
+  dataset$search_occupation <- dataset$contributor_occupation
+  # Remove refunds as they are not relevant due to not being active contributions during this time
+  dataset$contributor_money <- as.numeric(sub("\\$","", dataset$contributor_money))
+  return(dataset[as.numeric(as.character(dataset$contributor_money)) > 0,])
+}
+file = get_dataset()
+dataset = load_dataset(file)
+```
+
+
+```{r,echo=TRUE,fig.width=8,fig.height=4,dpi=300,out.width="1920px",height="900px"}
+ggplot(data = dataset, aes(x=candidate_name, y=contributor_money)) +scale_y_continuous("", labels=dollar) + geom_bar(stat="identity",fill="blue") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("Monetary contributions per candidate in Millions") + labs(x="",y="")
+```
+
+Navigation
+========================================================
+
+In order to explore the dataset, users can choose a specific candidate. 
+
+- Summary: A Wikipedia-introduction to each candidate
+- Occupations: The top occupations provided by campaign contributors
+- Employers - The top companies provided by campaign contributors
+- States - The top states where campaign contributions were received
+- Raw - Perform your own searches on the data
+
+On candidate dropdown change, each plot is generated on the fly using Shiny's reactive function. 
+
+Observations
+========================================================
+
+- One of the biggest media spotlights is on Donald Trump, however, his data is non-existent in this data due to timing. 
+- Getting into the race early is usually seen as a way to get ahead when it comes to fundraising, however, it doesn't appear to impact fundraising, nor performance in the polls. 
+- Rolling over Senate fundraising helps with reporting, but does not necessarily contain the right data
+
+### User challenges
+
+- Which candidate do you think received the most contributions from pastors?
+- Which candidate received contributions from a writer on The Simpsons?
+- Who received the most contributions from actresses?
+- Which candidate received the most contributions from Google staff?
